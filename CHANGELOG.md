@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2023-12-18
+### Fixed
+- Rectified the price rounding issue.
+
 ## [2.4.0] - 2023-06-30
 ### Improvements
 - PHP 8.1 compatibility
