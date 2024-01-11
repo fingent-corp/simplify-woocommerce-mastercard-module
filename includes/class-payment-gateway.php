@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2017-2022 Mastercard
+ * Copyright (c) 2019-2026 Mastercard
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
-define( 'MPGS_MODULE_VERSION', '2.4.0' );
+define( 'MPGS_MODULE_VERSION', '2.4.1' );
 
 class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
     const ID = 'simplify_commerce';
@@ -869,11 +869,24 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      *
      * @return int
      */
-    protected function get_total_amount( $totalAmount ) {
-        $priceDecimals   = wc_get_price_decimals();
-        $priceMultiplier = pow( 10, $priceDecimals );
+    protected function get_total_amount( $total_amount ) {
+        $price_decimals   = wc_get_price_decimals();
 
-        return (int) round( (float) $totalAmount * $priceMultiplier );
+        switch ( $price_decimals ) {
+            case '0':
+            case '1':
+            case '2':
+                $price_multiplier = 100;
+                break;
+            case '3':
+                $price_multiplier = 1000;
+                break;        
+            default:
+                $price_multiplier = 100;
+                break;
+        }
+
+        return (int) round( (float) $total_amount * $price_multiplier );
     }
 
     /**

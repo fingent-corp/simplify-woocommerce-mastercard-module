@@ -1,0 +1,10 @@
+.idea/
+*.iml
+.git/
+.gitignore
+docker-compose.yml
+Dockerfile
+.dockerignore
+.DS_Store
+.ignore/
+./docs/
