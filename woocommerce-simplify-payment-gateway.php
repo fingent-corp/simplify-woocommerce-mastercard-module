@@ -2,14 +2,19 @@
 /**
  * Plugin Name: Mastercard Payment Gateway Services - Simplify
  * Plugin URI: https://github.com/fingent-corp/simplify-woocommerce-mastercard-module/
- * Description: Mastercard Payment Gateway Services - Simplify plugin from Mastercard lets you to take card payments directly on your WooCommerce store. Requires PHP 8.1+ & WooCommerce 7.3+
+ * Description: Mastercard Payment Gateway Services - Simplify plugin from Mastercard lets you to take card payments directly on your WooCommerce store. Requires PHP 7.4+ & WooCommerce 7.6+
  * Author: Fingent Global Solutions Pvt. Ltd.
  * Author URI: https://www.fingent.com/
  * Text Domain: woocommerce-gateway-simplify-commerce
- * Version: 2.4.1
+ * Version: 2.4.2
+ *
+ * Requires at least: 6.0
+ * Tested up to: 6.4.3
+ * Requires PHP: 7.4
+ * php version 8.1
  *
  * WC requires at least: 7.6
- * WC tested up to: 8.3.0
+ * WC tested up to: 8.5.2
  * 
  * Copyright (c) 2019-2026 Mastercard
  *
@@ -30,6 +35,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Automattic\WooCommerce\Utilities\OrderUtil;
+
 /**
  * Required minimums
  */
@@ -38,7 +45,6 @@ define( 'WC_SIMPLIFY_COMMERCE_MIN_WC_VER', '7.6.0' );
 define( 'WC_SIMPLIFY_COMMERCE_FILE', __FILE__ );
 
 class WC_Gateway_Simplify_Commerce_Loader {
-
 	/**
 	 * @var WC_Gateway_Simplify_Commerce_Loader The reference the *Singleton* instance of this class
 	 */
@@ -92,6 +98,11 @@ class WC_Gateway_Simplify_Commerce_Loader {
 		add_action( 'admin_init', array( $this, 'check_environment' ) );
 		add_action( 'admin_notices', array( $this, 'admin_notices' ), 15 );
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'before_woocommerce_init', array( $this, 'declare_cart_checkout_blocks_compatibility' ) );
+
+		if( ! $this->is_order_pay_page() ) {
+			add_action( 'woocommerce_blocks_loaded', array( $this, 'woocommerce_simplify_mastercard_woocommerce_block_support' ), 99 );
+		}
 	}
 
 	/**
@@ -99,9 +110,13 @@ class WC_Gateway_Simplify_Commerce_Loader {
 	 */
 	public function init() {
 
-		define( 'MPGS_PLUGIN_FILE', __FILE__ );
-		define( 'MPGS_PLUGIN_BASENAME', plugin_basename( MPGS_PLUGIN_FILE ) );
-		
+		define( 'MPGS_SIMPLIFY_PLUGIN_FILE', __FILE__ );
+		define( 'MPGS_SIMPLIFY_PLUGIN_BASENAME', plugin_basename( MPGS_SIMPLIFY_PLUGIN_FILE ) );
+		define( 'MPGS_SIMPLIFY_ROOT_FOLDER', plugin_basename( dirname( MPGS_SIMPLIFY_PLUGIN_FILE ) ) );
+
+		require_once plugin_basename( '/includes/class-simplify-checkout-builder.php' );	
+		require_once plugin_basename( '/includes/class-gateway-notification.php' );	
+
 		// Don't hook anything else in the plugin if we're in an incompatible environment
 		if ( self::get_environment_warning() ) {
 			return;
@@ -113,9 +128,11 @@ class WC_Gateway_Simplify_Commerce_Loader {
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'plugin_action_links' ) );
 		add_filter( 'plugin_row_meta', array( $this, 'plugin_row_meta' ), 10, 2 );
 
-		add_filter( 'woocommerce_order_actions', function ( $actions ) {
-			$order = new WC_Order( $_REQUEST['post'] );
-			if ( $order->get_payment_method() == WC_Gateway_Simplify_Commerce::ID
+		add_filter( 'woocommerce_order_actions', function ( $actions ) {		
+			$order_id = self::get_order_id();
+			$order = new WC_Order( $order_id );
+
+			if ( $order && $order->get_payment_method() == WC_Gateway_Simplify_Commerce::ID
 			     && $order->get_meta( '_simplify_order_captured' ) === '0'
 			     && $order->get_status() == 'processing'
 			) {
@@ -135,7 +152,7 @@ class WC_Gateway_Simplify_Commerce_Loader {
 		add_action(
 			'wp_enqueue_scripts',
 			array( $this, 'enqueue_scripts' )
-		);
+		);		
 	}
 
 	/**
@@ -163,6 +180,15 @@ class WC_Gateway_Simplify_Commerce_Loader {
 	}
 
 	/**
+	 * Get the plugin url.
+	 *
+	 * @return string
+	 */
+	public static function plugin_url() {
+		return untrailingslashit( plugins_url( '/', MPGS_SIMPLIFY_PLUGIN_BASENAME ) );
+	}
+
+	/**
 	 * The backup sanity check, in case the plugin is activated in a weird way,
 	 * or the environment changes after activation.
 	 */
@@ -174,6 +200,33 @@ class WC_Gateway_Simplify_Commerce_Loader {
 			if ( isset( $_GET['activate'] ) ) {
 				unset( $_GET['activate'] );
 			}
+		}
+	}
+
+	/**
+	 * Return WooCommerce order id.
+	 *
+	 * @return int Order id. 
+	 */
+	public static function get_order_id() {
+		if( 'yes' !== self::is_hpos() )
+			$order_id = isset( $_REQUEST['post'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['post'] ) ) : null;
+		else
+			$order_id = isset( $_REQUEST['id'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['id'] ) ) : null;
+
+		return $order_id;
+	}
+
+	/**
+	 * Confirm whether HPOS has been enabled or not.
+	 *
+	 * @return bool HPOS. 
+	 */
+	public static function is_hpos() {
+		if ( OrderUtil::custom_orders_table_usage_is_enabled() ) {
+			return 'yes';
+		} else {
+			return 'no';
 		}
 	}
 
@@ -269,8 +322,7 @@ class WC_Gateway_Simplify_Commerce_Loader {
 	 * @return array
 	 */
 	public static function plugin_row_meta( $links, $file ) {
-
-		if ( MPGS_PLUGIN_BASENAME !== $file ) {
+		if ( MPGS_SIMPLIFY_PLUGIN_BASENAME !== $file ) {
 			return $links;
 		}
 
@@ -388,6 +440,48 @@ class WC_Gateway_Simplify_Commerce_Loader {
 			'simplify_checkout_styles',
 			plugin_dir_url( __FILE__ ) . 'public/css/styles.css'
 		);
+	}
+
+	/**
+	 * Function to declare compatibility with cart_checkout_blocks feature.
+	 *
+	 * @since 2.4.2
+	 * @return void
+	 */
+	public function declare_cart_checkout_blocks_compatibility() { // phpcs:ignore Universal.Files.SeparateFunctionsFromOO.Mixed
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+		}
+	}
+
+	/**
+	 * Function to register the Mastercard payment method type.
+	 *
+	 * @since 2.4.2
+	 * @return void
+	 */
+	public function woocommerce_simplify_mastercard_woocommerce_block_support() {
+		if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+			return;
+		}
+		
+		require_once plugin_dir_path( __FILE__ ) . 'includes/class-gateway-blocks-support.php';
+		add_action(
+			'woocommerce_blocks_payment_method_type_registration',
+			function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry ) {
+				$payment_method_registry->register( new MC_Gateway_Simplify_Blocks_Support() );
+			}
+		);
+	}
+
+	/**
+	 * Is_order_pay_page - Returns true when viewing the order received page.
+	 *
+	 * @return bool
+	 */
+	public function is_order_pay_page() {
+		return isset( $_GET['key'] ) && strpos( $_SERVER['REQUEST_URI'], 'order-pay' ) !== false;
 	}
 }
 

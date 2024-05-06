@@ -42,7 +42,7 @@ class Simplify_AccessToken extends Simplify_Object {
      * @param $authentication - Authentication information to access the API.  If not value is passed the global key Simplify::$publicKey and Simplify::$privateKey are used
      * @return Simplify_AccessToken
      */
-    public static function create($code, $redirect_uri, $authentication = null) {
+    public static function create($code, $redirect_uri, $authentication = null) { 
 
         $args = func_get_args();
         $authentication = Simplify_PaymentsApi::buildAuthenticationObject($authentication, $args, 3);

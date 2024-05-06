@@ -1,18 +1,30 @@
 == Simplify - Mastercard Payment Gateway Services Changelog ==
 
+2024-05-06 - version 2.4.2
+
+* Add - Implemented a notification feature to alert the WordPress administrator whenever a new version is launched on GitHub.
+* Add - Enabled Gutenberg block compatibility for the WooCommerce checkout page.
+* Add - MGPS plugin compatibility with WooCommerce High-Performance Order Storage (HPOS).
+* Add - Customer details are populated in transaction details in Simplify Gateway.
+* Enhancement - Compatibility with WordPress 6.5 and WooCommerce 8.5.
+
 2023-12-18 - version 2.4.1
+
 * Fix - Rectified the price rounding issue.
 
 2023-06-30 - version 2.4.0
+
 * Add - Added a new setting that allows admin to input custom gateway URL.
 * Update - PHP 8.1 compatibility
 * Update - Compatibility with Wordpress 6.2 and WooCommerce 7.7
 * Update - Updated the SDK version to 1.7.0
 
 2022-05-11 - version 2.3.2
+
 * Fix - "Amount mismatch" error is triggered when a user purchases a product on recent versions of WooCommerce (WordPress 5.9.3 / Woocommerce 6.4.1).
 
 2021-12-01 - version 2.3.1
+
 * Fix - Fixed a "false" Transaction Description issue that happened for some types of transactions.
 
 2021-10-19 - version 2.3.0
@@ -24,42 +36,54 @@
 * Fix - It's impossible to Refund the Payment if the plugin works in the Authorization Mode.
 
 2021-01-29 - version 2.2.0
+
 * Fix - Fix the issue with text transformation while save the settings.
 
 2021-01-14 - version 2.1.2
+
 * Fix - Fixing an issue where performing a partial refund through WooCommerce will instead refund the full amount. 
 
 2020-12-19 - version 2.1.1
+
 * Fix - Patch to allow for non-Latin (e.g. Greek or Arabic) characters in the checkout.
 
 2020-10-29 - version 2.1.0
+
 * Add - Added support for transaction modes, Payment and Authorization.
 * Add - Added capture and reverse capability.
 
 2020-09-19 - version 2.0.0
+
 * Update - Standard integration has been removed.
-* Update - Compatibility with Wordpress 5.2 and WooCommerce 3.6.
+* Update - Compatibility with WordPress 5.2 and WooCommerce 3.6.
 
 2020-08-05 - version 1.4.3
+
 * Fix - Fixed the issue with amounts off by 1c.
 
 2020-07-05 - version 1.4.2
+
 * Update - Adding Qatar to the supported countries list.
 
 2020-06-11 - version 1.4.1
+
 * Fix - Using hash_equals in return_handler helps prevent timing attacks.
 
 2020-05-17 - version 1.4.0
+
 * Add - Display supported card types set by merchant.
 
 2020-04-01 - version 1.3.0
+
 * Update - Save hosted payment for subscription.
 
 2020-03-19 - version 1.2.0
+
 * Add - Adding "Australia" to the supported countries list.
 * Add - Pass currency code in Hosted Payments args.
 
 2020-01-04 - version 1.1.0
+
 * Fix - Fix the card on file not working for subscription payment.
 
 2019-12-17 - version 1.0.0
