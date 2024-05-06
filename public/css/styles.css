@@ -1,3 +1,11 @@
+/**
+ * Plugin Name: Mastercard Payment Gateway Services - Simplify
+ * Author: Fingent Global Solutions Pvt. Ltd.
+ * Author URI: https://www.fingent.com/
+ * Text Domain: woocommerce-gateway-simplify-commerce
+ * Version: 2.4.2
+ */
+
 iframe.simplify-embedded-payment-form {
     border: none;
     min-height: 450px;

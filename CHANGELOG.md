@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.4.2] - 2024-05-06
+### Added 
+- Implemented a notification feature to alert the WordPress administrator whenever a new version is launched on GitHub.
+- Enabled Gutenberg block compatibility for the WooCommerce checkout page.
+- MGPS plugin compatibility with WooCommerce High-Performance Order Storage (HPOS).
+- Customer details are populated in transaction details in Simplify Gateway.
+### Improvements 
+- Compatibility with WordPress 6.5 and WooCommerce 8.5.
+
 ## [2.4.1] - 2023-12-18
 ### Fixed
 - Rectified the price rounding issue.

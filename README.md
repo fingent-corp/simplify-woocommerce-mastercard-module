@@ -18,12 +18,40 @@ For any issues or enhancement requests you have with this plugin, please raise t
 
 **Minimum Requirements**
 
-* WooCommerce 7.3 or greater
+* WooCommerce 7.6 or greater
 * PHP version 7.4 or greater
 * cURL
 
-The module has been tested and is supported with the following versions of WooCommerce:
-7.3 - 7.7.1
+## Compatibility
+The module has been tested with the WooCommerce versions:
+
+- 7.3.0
+- 7.4.1 
+- 7.5.1 
+- 7.6.1 
+- 7.7.2
+- 7.8.0
+- 7.9.0
+- 8.0.1
+- 8.1.1
+- 8.2.1
+- 8.3.0
+- 8.4.1
+- 8.5.2
+
+The module has been tested with the WordPress versions:
+
+- 5.2.4
+- 5.3.2
+- 5.6.0
+- 5.7.2
+- 5.9.1
+- 6.0.3
+- 6.1.2
+- 6.2.2
+- 6.3.1
+- 6.4.2
+- 6.5.2
 
 ## Documentation
 The official documentation for this module is available on: [https://mpgs.fingent.wiki/simplify-commerce/simplify-commerce-payment-gateway-for-woocommerce/getting-started/](https://mpgs.fingent.wiki/simplify-commerce/simplify-commerce-payment-gateway-for-woocommerce/getting-started/)

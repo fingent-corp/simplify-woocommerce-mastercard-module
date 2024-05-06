@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
-define( 'MPGS_MODULE_VERSION', '2.4.1' );
+define( 'MPGS_SIMPLIFY_MODULE_VERSION', '2.4.2' );
 
 class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
     const ID = 'simplify_commerce';
@@ -150,12 +150,29 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      */
 
     public function admin_scripts() {
+        if( 'woocommerce_page_wc-orders' === get_current_screen()->id || 'shop_order' === get_current_screen()->id ) {
+            add_action( 'admin_head', array( $this, 'woocommerce_simplify_custom_styles' ) );
+        }
+
         if ( 'woocommerce_page_wc-settings' !== get_current_screen()->id ) {
             return;
         }
 
         wp_enqueue_script( 'woocommerce_simplify_admin', plugins_url( 'assets/js/mastercard-admin.js', WC_SIMPLIFY_COMMERCE_FILE ),
             array(), time(), true );
+    }
+
+    /**
+     * @return void
+     */
+
+    public function woocommerce_simplify_custom_styles() {
+        $order_id = WC_Gateway_Simplify_Commerce_Loader::get_order_id();
+        $order    = new WC_Order( $order_id );
+
+        if ( 'refunded' === $order->get_status() ) {
+            echo '<style>.wp-core-ui .button.refund-items { display: none !important; } </style>';
+        }
     }
 
     /**
@@ -199,21 +216,36 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                         $payment->id
                     )
                 );
+                if ( wp_get_referer() || 'yes' !== WC_Gateway_Simplify_Commerce_Loader::is_hpos() ) {
+                    wp_safe_redirect( wp_get_referer() );
+                } else {
+                    $return_url = add_query_arg( array(
+                        'page'    => 'wc-orders',
+                        'action'  => 'edit',
+                        'id'      => $order->get_id(),
+                        'message' => 1
+                    ), admin_url( 'admin.php' ) );
+                    wp_safe_redirect( $return_url );
+                }
+                exit;
             } else {
                 throw new Exception( 'Capture declined' );
             }
 
-        } catch ( Simplify_ApiException $e ) {
+        } catch ( Simplify_ApiException $e ) { 
 
-            if ( $this->is_payment_already_captured( $e ) ) {
+            if ( 'system' !== $e->getErrorCode() && $this->is_payment_already_captured( $e ) ) {
                 $this->process_capture_order_status( $order );
                 $order->add_order_note(
                     __( 'Payment is already captured.', 'woocommerce-gateway-simplify-commerce' )
                 );
 
             } else {
+                $order->add_order_note(
+                    __( $e->getMessage(), 'woocommerce-gateway-simplify-commerce' )
+                );
                 wp_die( $e->getMessage() . '<br>Ref: ' . $e->getReference() . '<br>Code: ' . $e->getErrorCode(),
-                    __( 'Gateway Failure' ) );
+                    __( 'Gateway Failure' ) );              
             }
 
         } catch ( Exception $e ) {
@@ -227,12 +259,16 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      * @return bool
      */
     protected function is_payment_already_captured( Simplify_ApiException $e ) {
-        $field_errors = $e->getFieldErrors();
-        $error_codes  = array_map( function ( Simplify_FieldError $field_error ) {
-            return $field_error->getErrorCode();
-        }, $field_errors );
+        $field_errors = $e->getFieldErrors(); 
+        if( $field_errors ) {
+            $error_codes  = array_map( function ( Simplify_FieldError $field_error ) {
+                return $field_error->getErrorCode();
+            }, $field_errors );
 
-        return in_array( 'payment.already.captured', $error_codes );
+            return in_array( 'payment.already.captured', $error_codes );
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -306,6 +342,19 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 'restock_items'  => true,
                 'amount'         => $order->get_remaining_refund_amount(),
             ) );
+
+            if ( wp_get_referer() || 'yes' !== WC_Gateway_Simplify_Commerce_Loader::is_hpos() ) {
+                wp_safe_redirect( wp_get_referer() );
+            } else {
+                $return_url = add_query_arg( array(
+                    'page'    => 'wc-orders',
+                    'action'  => 'edit',
+                    'id'      => $order->get_id(),
+                    'message' => 1
+                ), admin_url( 'admin.php' ) );
+                wp_safe_redirect( $return_url );
+            }
+            exit;
 
         } catch ( Simplify_ApiException $e ) {
             wp_die( $e->getMessage() . '<br>Ref: ' . $e->getReference() . '<br>Code: ' . $e->getErrorCode(),
@@ -715,7 +764,16 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
         }
 
         try {
+
+            // Create customer
+            $customer = Simplify_Customer::createCustomer( array(
+                'email'     => $order->get_billing_email(),
+                'name'      => trim( $order->get_formatted_billing_full_name() ),
+                'reference' => $order->get_id()
+            ) );
+
             // Charge the customer
+            $order_builder = new Mastercard_Simplify_CheckoutBuilder( $order );
             $data = array(
                 'amount'      => $this->get_total( $order ), // In cents. Rounding to avoid floating point errors.
                 'description' => sprintf(
@@ -723,10 +781,16 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     $order->get_order_number()
                 ),
                 'currency'    => strtoupper( get_woocommerce_currency() ),
-                'reference'   => $order->get_id()
+                'reference'   => $order->get_id(),
+                'card'        => $order_builder->getCardInfo(),
+                'order'       => $order_builder->getOrder(),
             );
 
-            $data    = array_merge( $data, $token );
+            if ( is_object( $customer ) && '' != $customer->id ) {
+                $data['customer'] = wc_clean( $customer->id );
+            }
+
+            $data    = array_merge( $data, $token ); 
             $payment = Simplify_Payment::createPayment( $data );
 
         } catch ( Exception $e ) {
@@ -1080,7 +1144,15 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
         }
 
         try {
-            $authorization = Simplify_Authorization::createAuthorization( array(
+            // Create customer
+            $customer = Simplify_Customer::createCustomer( array(
+                'email'     => $order->get_billing_email(),
+                'name'      => trim( $order->get_formatted_billing_full_name() ),
+                'reference' => $order->get_id()
+            ) );
+
+            $order_builder = new Mastercard_Simplify_CheckoutBuilder( $order );
+            $data          = array(
                 'amount'      => $amount,
                 'token'       => $card_token,
                 'reference'   => $order->get_id(),
@@ -1089,7 +1161,15 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     __( 'Order #%s', 'woocommerce-gateway-simplify-commerce' ),
                     $order->get_order_number()
                 ),
-            ) );
+                'card'        => $order_builder->getCardInfo(),
+                'order'       => $order_builder->getOrder(),
+            );
+
+            if ( is_object( $customer ) && '' != $customer->id ) {
+                $data['customer'] = wc_clean( $customer->id );
+            }
+
+            $authorization = Simplify_Authorization::createAuthorization( $data );
 
             return $this->process_authorization_order_status(
                 $order,
@@ -1110,6 +1190,10 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     $err_msg = $error->getMessage();
                 }
             }
+
+            $order->update_status( 'failed',
+                __( 'Authorization was declined by your gateway.', 'woocommerce-gateway-simplify-commerce' )
+            );
 
             $order->add_order_note( sprintf( __( 'Gateway payment error: %s', 'woocommerce-gateway-simplify-commerce' ),
                 $error_message ) );
