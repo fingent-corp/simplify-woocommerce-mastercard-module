@@ -14,20 +14,20 @@
  * limitations under the License.
  *
  */
-const settings = window.wc.wcSettings.getSetting( 'simplify_commerce_data', {} ),
-    label = window.wp.htmlEntities.decodeEntities( settings.title ) || window.wp.i18n.__( 'Mastercard Gateway', 'simplify_commerce' ),
-    Content = () => {
-        return window.wp.htmlEntities.decodeEntities( settings.description || '' );
+const simplifySettings = window.wc.wcSettings.getSetting( 'simplify_commerce_data', {} ),
+    simplifyLabel = window.wp.htmlEntities.decodeEntities( simplifySettings.title ) || window.wp.i18n.__( 'Mastercard Gateway - Simplify', 'simplify_commerce' ),
+    simplifyContent = () => {
+        return window.wp.htmlEntities.decodeEntities( simplifySettings.description || '' );
     },
-    Mastercard_Block_Gateway = {
+    Mastercard_Simplify_Block_Gateway = {
         name: 'simplify_commerce',
-        label: label,
-        content: Object( window.wp.element.createElement )( Content, null ),
-        edit: Object( window.wp.element.createElement )( Content, null ),
+        label: simplifyLabel,
+        content: Object( window.wp.element.createElement )( simplifyContent, null ),
+        edit: Object( window.wp.element.createElement )( simplifyContent, null ),
         canMakePayment: () => true,
-        ariaLabel: label,
+        ariaLabel: simplifyLabel,
         supports: {
-            features: settings.supports,
+            features: simplifySettings.supports,
         },
     };
-window.wc.wcBlocksRegistry.registerPaymentMethod( Mastercard_Block_Gateway );
+window.wc.wcBlocksRegistry.registerPaymentMethod( Mastercard_Simplify_Block_Gateway );
