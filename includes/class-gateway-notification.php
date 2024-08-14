@@ -278,7 +278,7 @@ class Mastercard_Simplify_Gateway_Notification {
 	 *
 	 * @return void
 	 */
-	public function display_simplify_changelog() {echo '<pre>';print_r($this->plugin_slug);echo '</pre>';exit;
+	public function display_simplify_changelog() {
 		$plugin = isset( $_REQUEST['plugin'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['plugin'] ) ) : null; // phpcs:disable WordPress.Security.NonceVerification.Recommended
 
 		if ( $plugin !== $this->plugin_slug ) {
