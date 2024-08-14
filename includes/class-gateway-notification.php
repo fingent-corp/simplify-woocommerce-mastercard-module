@@ -144,8 +144,7 @@ class Mastercard_Simplify_Gateway_Notification {
 				array(
 					'headers' => array(
 						'Accept'               => 'application/vnd.github+json',
-						'X-GitHub-Api-Version' => '2022-11-28',
-						'Authorization'        => 'Bearer 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',
+						'X-GitHub-Api-Version' => '2022-11-28'
 					),
 				)
 			); 
