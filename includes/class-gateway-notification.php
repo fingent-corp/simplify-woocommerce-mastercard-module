@@ -95,6 +95,13 @@ class Mastercard_Simplify_Gateway_Notification {
 	protected $changelog = null;
 
 	/**
+	 * Plugin slug.
+	 *
+	 * @var string|null
+	 */
+	protected $plugin_slug;
+
+	/**
 	 * GatewayService constructor.
 	 *
 	 * @throws \Exception Throws an exception with the response.
@@ -103,7 +110,7 @@ class Mastercard_Simplify_Gateway_Notification {
 
 		$this->id               = 'simplify_commerce';
 		$this->wp_requires      = '6.0';
-		$this->wp_tested        = '6.5.1';
+		$this->wp_tested        = '6.4.3';
 		$this->min_php_required = '7.4';
 		$this->plugin_slug      = MPGS_SIMPLIFY_ROOT_FOLDER;
 		$this->base_url         = 'github.com';
@@ -115,7 +122,7 @@ class Mastercard_Simplify_Gateway_Notification {
 		$this->api_url          = 'https://api.' . $this->base_url . '/repos/' . $this->owner . '/' . $this->repo . '/releases/latest';
 
 		register_deactivation_hook( __FILE__, array( $this, 'clear_mgps_simplify_module_new_version_check' ) );
-		// $this->save_changelog( '' );
+		$this->save_changelog( '' );
 		add_action( 'init', array( $this, 'create_cron_mpgs_version_check' ) );
 		add_action( 'mgps_simplify_module_new_version_check', array( $this, 'mgps_new_version_check' ) );
 
@@ -137,10 +144,11 @@ class Mastercard_Simplify_Gateway_Notification {
 				array(
 					'headers' => array(
 						'Accept'               => 'application/vnd.github+json',
-						'X-GitHub-Api-Version' => '2022-11-28'
+						'X-GitHub-Api-Version' => '2022-11-28',
+						'Authorization'        => 'Bearer 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',
 					),
 				)
-			);
+			); 
 
 			if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
 				$plugin_file   = MPGS_SIMPLIFY_PLUGIN_BASENAME;
@@ -148,7 +156,6 @@ class Mastercard_Simplify_Gateway_Notification {
 
 				if ( json_last_error() === JSON_ERROR_NONE || $response_body && is_array( $response_body ) ) {
 					$latest_version = $response_body['tag_name'];
-					$this->save_changelog( $response_body['body'] );
 
 					if ( version_compare( $latest_version, $this->current_version, '>' ) ) {
 						$mgps_plugin_info               = new stdClass();
@@ -157,8 +164,7 @@ class Mastercard_Simplify_Gateway_Notification {
 						$mgps_plugin_info->plugin       = $plugin_file;
 						$mgps_plugin_info->new_version  = $latest_version;
 						$mgps_plugin_info->url          = 'https://api.' . $this->base_url . '/repos/' . $this->owner . '/' . $this->repo;
-						// $mgps_plugin_info->package      = $response_body['assets'][0]['browser_download_url'];
-						$mgps_plugin_info->package      = "";
+						$mgps_plugin_info->package      = $response_body['assets'][0]['browser_download_url'];
 						$mgps_plugin_info->icons        = array();
 						$mgps_plugin_info->banners      = array();
 						$mgps_plugin_info->banners_rtl  = array();
@@ -231,35 +237,24 @@ class Mastercard_Simplify_Gateway_Notification {
 	 * @return void
 	 */
 	public function save_changelog( $changelog ) {
-        // $changelog_with_tags = '';
-		// $response = wp_remote_get( $this->doc_url . 'changelog-simplify' );
+        $changelog_with_tags = '';
+		$response = wp_remote_get( $this->doc_url . 'changelog-simplify' );
 
-        // if ( is_array( $response ) && ! is_wp_error( $response ) ) {
-        //     $dom = new DOMDocument();
-        //     $html    = $response['body'];
-        //     libxml_use_internal_errors(true);
-        //     $dom->loadHTML( $html );
-        //     $xpath = new DOMXPath( $dom );
-        //     $body = $dom->getElementsByTagName('body')->item(0);
-        //     $divId = 'page-content';
-        //     $divElements = $xpath->evaluate("//div[@class='$divId']/node()"); 
+        if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+            $dom = new DOMDocument();
+            $html    = $response['body'];
+            libxml_use_internal_errors(true);
+            $dom->loadHTML( $html );
+            $xpath = new DOMXPath( $dom );
+            $body = $dom->getElementsByTagName('body')->item(0);
+            $divId = 'page-content';
+            $divElements = $xpath->evaluate("//div[@class='$divId']/node()"); 
 
-        //     foreach ( $divElements as $childNode ) {
-        //         $changelog_with_tags .= $dom->saveHtml( $childNode );
-        //     }
-        // }
-		$changelog = preg_replace( '/\*\*(.*?)\*\*/', '<b>$1</b>', $changelog );
-		preg_match_all( '/[^\n]+/', $changelog, $matches );
+            foreach ( $divElements as $childNode ) {
+                $changelog_with_tags .= $dom->saveHtml( $childNode );
+            }
+        }
 
-		$changelog_with_tags = '';
-
-		if ( $matches && is_array( $matches ) ) {
-			foreach ( $matches[0] as $p_tag ) {
-				if ( '' !== $p_tag ) {
-					$changelog_with_tags .= '<p>' . $p_tag . '</p>';
-				}
-			}
-		}
 		update_option( '_mgps_simplify_current_version_changelog', $changelog_with_tags );
 	}
 

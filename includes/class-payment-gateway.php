@@ -782,7 +782,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 ),
                 'currency'    => strtoupper( get_woocommerce_currency() ),
                 'reference'   => $order->get_id(),
-                'card'        => $order_builder->getCardInfo(),
                 'order'       => $order_builder->getOrder(),
             );
 
@@ -794,7 +793,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
             $payment = Simplify_Payment::createPayment( $data );
 
         } catch ( Exception $e ) {
-
             $error_message = $e->getMessage();
 
             if ( $e instanceof Simplify_BadRequestException && $e->hasFieldErrors() && $e->getFieldErrors() ) {
@@ -805,7 +803,7 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 }
             }
 
-            $order->add_order_note( sprintf( __( 'Gateway payment error: %s', 'woocommerce-gateway-simplify-commerce' ),
+            $order->add_order_note( sprintf( __( 'Gateway payment error 1: %s', 'woocommerce-gateway-simplify-commerce' ),
                 $error_message ) );
 
             return new WP_Error( 'simplify_payment_declined', $err_msg, array( 'status' => $e->getCode() ) );
@@ -1161,7 +1159,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     __( 'Order #%s', 'woocommerce-gateway-simplify-commerce' ),
                     $order->get_order_number()
                 ),
-                'card'        => $order_builder->getCardInfo(),
                 'order'       => $order_builder->getOrder(),
             );
 
@@ -1195,11 +1192,11 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 __( 'Authorization was declined by your gateway.', 'woocommerce-gateway-simplify-commerce' )
             );
 
-            $order->add_order_note( sprintf( __( 'Gateway payment error: %s', 'woocommerce-gateway-simplify-commerce' ),
+            $order->add_order_note( sprintf( __( 'Gateway payment error 2: %s', 'woocommerce-gateway-simplify-commerce' ),
                 $error_message ) );
 
             wc_add_notice( 
-                sprintf( __( 'Gateway payment error: %s', 'woocommerce-gateway-simplify-commerce' ), $error_message ),
+                sprintf( __( 'Gateway payment error 3: %s', 'woocommerce-gateway-simplify-commerce' ), $error_message ),
                 'error'
             );
 

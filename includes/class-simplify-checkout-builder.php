@@ -72,16 +72,33 @@ class Mastercard_Simplify_CheckoutBuilder {
 			return null;
 		}
 
-		return array(
-			'shippingFromAddress' => array(
-				'line1'   => self::safe( WC()->countries->get_base_address(), 100 ),
-				'line2'   => self::safe( WC()->countries->get_base_address_2(), 100 ),
-				'city'    => self::safe( WC()->countries->get_base_city(), 100 ),
-				'zip'     => self::safe( WC()->countries->get_base_postcode(), 10 ),
-				'country' => self::safe( WC()->countries->get_base_country(), 20 ),
-				'state'   => self::safe( WC()->countries->get_base_state(), 20 ),
-			)
-		);
+		$billing = array();
+
+		if( WC()->countries->get_base_address() ) {
+			$billing['shippingFromAddress']['line1'] = self::safe( WC()->countries->get_base_address(), 100 );
+		}
+
+		if( WC()->countries->get_base_address_2() ) {
+			$billing['shippingFromAddress']['line2'] = self::safe( WC()->countries->get_base_address_2(), 100 );
+		}
+
+		if( WC()->countries->get_base_city() ) {
+			$billing['shippingFromAddress']['city'] = self::safe( WC()->countries->get_base_city(), 100 );
+		}
+
+		if( WC()->countries->get_base_postcode() ) {
+			$billing['shippingFromAddress']['zip'] = self::safe( WC()->countries->get_base_postcode(), 10 );
+		}
+
+		if( WC()->countries->get_base_country() ) {
+			$billing['shippingFromAddress']['country'] = self::safe( WC()->countries->get_base_country(), 20 );
+		}
+
+		if( WC()->countries->get_base_state() ) {
+			$billing['shippingFromAddress']['state'] = self::safe( WC()->countries->get_base_state(), 20 );
+		}
+
+		return $billing;
 	}
 
 	/**
@@ -113,16 +130,33 @@ class Mastercard_Simplify_CheckoutBuilder {
 			return null;
 		}
 
-		return array(
-			'shippingAddress' => array(
-				'line1'   => self::safe( $this->order->get_shipping_address_1(), 100 ),
-				'line2'   => self::safe( $this->order->get_shipping_address_2(), 100 ),
-				'city'    => self::safe( $this->order->get_shipping_city(), 100 ),
-				'zip'     => self::safe( $this->order->get_shipping_postcode(), 10 ),
-				'country' => self::safe( $this->order->get_shipping_country(), 10 ),
-				'state'   => self::safe( $this->order->get_shipping_state(), 20 ),
-			)
-		);
+		$shipping = array();
+
+		if( $this->order->get_shipping_address_1() ) {
+			$shipping['shippingAddress']['line1'] = self::safe( $this->order->get_shipping_address_1(), 100 );
+		}
+
+		if( $this->order->get_shipping_address_2() ) {
+			$shipping['shippingAddress']['line2'] = self::safe( $this->order->get_shipping_address_2(), 100 );
+		}
+
+		if( $this->order->get_shipping_city() ) {
+			$shipping['shippingAddress']['city'] = self::safe( $this->order->get_shipping_city(), 100 );
+		}
+
+		if( $this->order->get_shipping_postcode() ) {
+			$shipping['shippingAddress']['zip'] = self::safe( $this->order->get_shipping_postcode(), 10 );
+		}
+
+		if( $this->order->get_shipping_country() ) {
+			$shipping['shippingAddress']['country'] = self::safe( $this->order->get_shipping_country(), 10 );
+		}
+
+		if( $this->order->get_shipping_state() ) {
+			$shipping['shippingAddress']['state'] = self::safe( $this->order->get_shipping_state(), 20 );
+		}
+
+		return $shipping;
 	}
 
 	/**
@@ -135,15 +169,37 @@ class Mastercard_Simplify_CheckoutBuilder {
 			return null;
 		}
 
-		return array(
-            'name'           => self::safe( $this->order->get_billing_first_name(), 50 ) . ' ' . self::safe( $this->order->get_billing_last_name(), 50 ),
-            'addressLine1'   => self::safe( $this->order->get_shipping_address_1(), 100 ),
-            'addressLine2'   => self::safe( $this->order->get_shipping_address_2(), 100 ),
-            'addressCity'    => self::safe( $this->order->get_shipping_city(), 100 ),
-            'addressZip'     => self::safe( $this->order->get_shipping_postcode(), 10 ),
-            'addressCountry' => self::safe( $this->order->get_shipping_country(), 10 ),
-            'addressState'   => self::safe( $this->order->get_shipping_state(), 10 ),
-        );
+		$card_info = array();
+
+		if( $this->order->get_billing_first_name() ) {
+			$card_info['name'] = self::safe( $this->order->get_billing_first_name(), 50 ) . ' ' . self::safe( $this->order->get_billing_last_name(), 50 );
+		}
+
+		if( $this->order->get_shipping_address_1() ) {
+			$card_info['addressLine1'] = self::safe( $this->order->get_shipping_address_1(), 100 );
+		}
+
+		if( $this->order->get_shipping_address_2() ) {
+			$card_info['addressLine2'] = self::safe( $this->order->get_shipping_address_2(), 100 );
+		}
+
+		if( $this->order->get_shipping_city() ) {
+			$card_info['addressCity'] = self::safe( $this->order->get_shipping_city(), 100 );
+		}
+
+		if( $this->order->get_shipping_postcode() ) {
+			$card_info['addressZip'] = self::safe( $this->order->get_shipping_postcode(), 10 );
+		}
+
+		if( $this->order->get_shipping_country() ) {
+			$card_info['addressCountry'] = self::safe( $this->order->get_shipping_country(), 10 );
+		}
+
+		if( $this->order->get_shipping_state() ) {
+			$card_info['addressState'] = self::safe( $this->order->get_shipping_state(), 10 );
+		}
+
+		return $card_info;
 	}
 
 	/**
@@ -166,8 +222,7 @@ class Mastercard_Simplify_CheckoutBuilder {
 	public function getOrderCustomer() { // phpcs:ignore
 		return array(
 			'customerEmail' => self::safe( $this->order->get_billing_email(), 100 ),
-			'customerName'  => self::safe( $this->order->get_billing_first_name(), 50 ) . ' ' . self::safe( $this->order->get_billing_last_name(), 50 ),
-			'customerNote'  => self::safe( $this->order->get_customer_note(), 100 ),
+			'customerName'  => self::safe( $this->order->get_billing_first_name(), 50 ) . ' ' . self::safe( $this->order->get_billing_last_name(), 50 )
 		);
 	}
 
