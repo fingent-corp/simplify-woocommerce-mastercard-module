@@ -1,8 +1,14 @@
 # Simplify Commerce Payment Gateway for WooCommerce
 
-The Simplify Commerce payment gateway plugin for WooCommerce 7.3+ lets you to take card payments directly on your WooCommerce store.
+The Simplify Commerce payment gateway plugin for WooCommerce 7.6+ lets you to take card payments directly on your WooCommerce store.
+<p align="center" style="margin-top: 25px;">
+<a href="https://www.fingent.com/"><img alt="Fingent logo" height="50px" src="https://www.fingent.com/wp-content/uploads/Fingent-Logo-01.png"/></a>&nbsp;&nbsp;<img alt="MC logo" height="50px" src="https://www.mastercard.co.in/content/dam/public/mastercardcom/in/en/logos/mc-logo-52.svg"/>
+</p>
 
-The Standard payment form in some of the previous releases is now deprecated and out of support.
+## Overview Section
+<a href="https://www.mastercard.co.in/en-in.html" target="_blank">Mastercard Inc.</a> is the second-largest payment-processing corporation worldwide. It offers a range of payment transaction processing and other related payment services. By connecting individuals, businesses, and organizations in more than 210 countries and territories today, we're unlocking opportunities for more people in more places for generations. This WooCommerce module adds different payment methods to the WooCommerce checkout, enabling credit and debit card payments to be accepted securely on your WooCommerce-powered website. 
+
+Payments through this module are processed securely via the Mastercard Payment Gateway. This ensures that card data is managed in compliance with all legal requirements. The gateway monitors every transaction and handles sensitive payment data on PCI Level 1 certified servers, simplifying PCI compliance for your business.
 
 ## Support
 
@@ -25,9 +31,6 @@ For any issues or enhancement requests you have with this plugin, please raise t
 ## Compatibility
 The module has been tested with the WooCommerce versions:
 
-- 7.3.0
-- 7.4.1 
-- 7.5.1 
 - 7.6.1 
 - 7.7.2
 - 7.8.0
@@ -38,6 +41,10 @@ The module has been tested with the WooCommerce versions:
 - 8.3.0
 - 8.4.1
 - 8.5.2
+- 8.7.1
+- 8.0.0
+- 9.0.2
+- 9.1.4
 
 The module has been tested with the WordPress versions:
 
@@ -52,6 +59,7 @@ The module has been tested with the WordPress versions:
 - 6.3.1
 - 6.4.2
 - 6.5.2
+- 6.6.1
 
 ## Documentation
 The official documentation for this module is available on: [https://mpgs.fingent.wiki/simplify-commerce/simplify-commerce-payment-gateway-for-woocommerce/getting-started/](https://mpgs.fingent.wiki/simplify-commerce/simplify-commerce-payment-gateway-for-woocommerce/getting-started/)
