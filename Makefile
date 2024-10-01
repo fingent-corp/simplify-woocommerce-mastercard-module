@@ -1,3 +1,3 @@
 all :
-	git archive HEAD --prefix=simplify-woocommerce-mastercard/ -o ./simplify-woocommerce-mastercard.zip &&\
-	echo "\nCreated simplify-woocommerce-mastercard.zip\n"
+	git archive HEAD --prefix=simplifycommerce/ -o ./woocommerce-simplifycommerce.zip &&\
+	echo "\nCreated woocommerce-simplifycommerce.zip\n"

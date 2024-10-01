@@ -386,7 +386,10 @@ class WC_Addons_Gateway_Simplify_Commerce extends WC_Gateway_Simplify_Commerce {
 			// Charge the customer
 			$data = array(
 				'amount'      => $this->get_total_amount( $amount ), // In cents.
-				'description' => sprintf( __( '%s - Order #%s', 'woocommerce-gateway-simplify-commerce' ), $order->get_order_number() ),
+				'description' => sprintf(
+                    __( 'Order #%s', 'woocommerce-gateway-simplify-commerce' ),
+                    $order->get_order_number()
+                ),
 				'currency'    => strtoupper( get_woocommerce_currency() ),
 				'reference'   => $order->get_id()
 			);
@@ -440,7 +443,7 @@ class WC_Addons_Gateway_Simplify_Commerce extends WC_Gateway_Simplify_Commerce {
 	 * @param WC_Order $renewal_order A WC_Order object created to record the renewal payment.
 	 */
 	public function scheduled_subscription_payment( $amount_to_charge, $renewal_order ) {
-		$result = $this->process_subscription_payment( $renewal_order, $amount_to_charge );
+		$result = $this->process_subscription_payment( $renewal_order, $amount_to_charge, array() );
 
 		if ( is_wp_error( $result ) ) {
 			$renewal_order->update_status( 'failed',

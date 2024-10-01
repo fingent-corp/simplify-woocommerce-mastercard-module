@@ -19,19 +19,23 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
-define( 'MPGS_SIMPLIFY_MODULE_VERSION', '2.4.2' );
+define( 'MPGS_SIMPLIFY_MODULE_VERSION', '2.4.3' );
+define( 'MPGS_SIMPLIFY_SDK_VERSION', '1.7.0' );
 
 class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
     const ID = 'simplify_commerce';
 
-    const TXN_MODE_PURCHASE = 'purchase';
+    const TXN_MODE_PURCHASE  = 'purchase';
     const TXN_MODE_AUTHORIZE = 'authorize';
 
-    const INTEGRATION_MODE_MODAL = 'modal';
+    const INTEGRATION_MODE_MODAL    = 'modal';
     const INTEGRATION_MODE_EMBEDDED = 'embedded';
 
-    const SIP_HOST = 'www.simplify.com';
+    const SIP_HOST   = 'www.simplify.com';
     const SIP_CUSTOM = 'custom';
+
+    const HF_FIXED      = 'fixed';
+    const HF_PERCENTAGE = 'percentage';
 
     /**
      * @var string
@@ -62,6 +66,23 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      * @var bool
      */
     protected $is_modal_integration_model;
+
+    /**
+     * @var string
+     */
+    protected $logging_level;
+
+    /**
+     * @var string
+     */
+    protected $hash;
+
+    /**
+     * Handling fees
+     *
+     * @var bool
+     */
+    protected $hf_enabled = null;
 
     /**
      * Constructor.
@@ -114,6 +135,9 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
         $this->public_key                 = $this->sandbox === 'no' ? $this->get_option( 'public_key' ) : $this->get_option( 'sandbox_public_key' );
         $this->private_key                = $this->sandbox === 'no' ? $this->get_option( 'private_key' ) : $this->get_option( 'sandbox_private_key' );
         $this->is_modal_integration_model = $this->get_option( 'integration_mode' ) === self::INTEGRATION_MODE_MODAL;
+        $this->logging_level              = $this->get_debug_logging_enabled() ? true : false;
+        $this->hash                       = hash( 'sha256', $this->public_key . $this->private_key );
+        $this->hf_enabled                 = $this->get_option( 'hf_enabled', false );
 
         $this->init_simplify_sdk();
 
@@ -143,6 +167,20 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
             'admin_enqueue_scripts', 
             array( $this, 'admin_scripts' ) 
         );
+
+        add_action(
+            'wp_ajax_download_log',
+            array( $this, 'download_decrypted_log' )
+        );
+
+        add_filter(
+            'woocommerce_admin_order_should_render_refunds',
+            array( $this, 'admin_order_should_render_refunds' ), 10, 3
+        );
+        add_action(
+            'woocommerce_cart_calculate_fees',
+            array( $this, 'add_handling_fee' )
+        );
     }
 
     /**
@@ -150,10 +188,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      */
 
     public function admin_scripts() {
-        if( 'woocommerce_page_wc-orders' === get_current_screen()->id || 'shop_order' === get_current_screen()->id ) {
-            add_action( 'admin_head', array( $this, 'woocommerce_simplify_custom_styles' ) );
-        }
-
         if ( 'woocommerce_page_wc-settings' !== get_current_screen()->id ) {
             return;
         }
@@ -163,16 +197,52 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
     }
 
     /**
-     * @return void
+     * Check if debug logging is enabled.
+     *
+     * @return bool True if debug logging is enabled, false otherwise.
      */
+    protected function get_debug_logging_enabled() {
+        if ( 'yes' === $this->get_option( 'debug', false ) ) {
 
-    public function woocommerce_simplify_custom_styles() {
-        $order_id = WC_Gateway_Simplify_Commerce_Loader::get_order_id();
-        $order    = new WC_Order( $order_id );
+            $filename = WP_CONTENT_DIR . '/mastercard_simplify.log';
+            if ( !is_writable( $filename ) ) {
+                @chmod( $filename, 0644 );
+            }
 
-        if ( 'refunded' === $order->get_status() ) {
-            echo '<style>.wp-core-ui .button.refund-items { display: none !important; } </style>';
+            if ( ! file_exists( $filename ) ) {
+                file_put_contents( $filename, '' );
+                chmod( $filename, 0644 );
+            }
+            
+            return true;
         }
+
+        return false;
+    }
+
+    /**
+     * Determines whether the admin order page should render refunds.
+     *
+     * This function is used to check if refunds should be displayed on the admin order page. 
+     * It can be used to add custom logic or conditions for rendering refunds in the order details view.
+     *
+     * @param bool $render_refunds Indicates whether refunds should be rendered.
+     * @param int $order_id The ID of the order being viewed.
+     * @param WC_Order $order The order object for which the refunds are being checked.
+     * @return bool Updated value of $render_refunds indicating whether refunds should be rendered.
+     */
+    public function admin_order_should_render_refunds( $render_refunds, $order_id, $order ) {
+        $auth_code = $order->get_meta( '_simplify_authorization' );
+        if ( $auth_code ) {
+            if( 
+                ( 'simplify_commerce' === $order->get_payment_method() && 'refunded' === $order->get_status() ) || 
+                ( 'simplify_commerce' === $order->get_payment_method() && empty( get_post_meta( $order_id, '_simplify_order_captured', true ) ) ) 
+            ) {
+                return false;
+            }
+        }
+
+        return $render_refunds;
     }
 
     /**
@@ -196,7 +266,7 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 throw new Exception( 'Invalid or missing authorization code' );
             }
 
-            $payment = Simplify_Payment::createPayment( array(
+            $data = array(
                 'authorization' => $authCode,
                 'reference'     => $order->get_id(),
                 'currency'      => strtoupper( $order->get_currency() ),
@@ -205,7 +275,10 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     __( 'Order #%s', 'woocommerce-gateway-simplify-commerce' ),
                     $order->get_order_number()
                 ),
-            ) );
+            );
+            $this->log( 'Capture Request', json_encode( $data ) );
+            $payment = Simplify_Payment::createPayment( $data );
+            $this->log( 'Capture Response', $payment );
 
             if ( $payment->paymentStatus === 'APPROVED' ) {
                 $this->process_capture_order_status( $order, $payment->id );
@@ -330,18 +403,9 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
 
             $authTxn = Simplify_Authorization::findAuthorization( $authCode );
             $authTxn->deleteAuthorization();
-
-            $order->add_order_note( sprintf( __( 'Gateway reverse authorization (ID: %s)',
-                'woocommerce-gateway-simplify-commerce' ),
-                $authCode ) );
-
-            wc_create_refund( array(
-                'order_id'       => $order->get_id(),
-                'reason'         => 'Reverse',
-                'refund_payment' => false,
-                'restock_items'  => true,
-                'amount'         => $order->get_remaining_refund_amount(),
-            ) );
+            $order->update_status( 'cancelled', sprintf( __( 'Gateway reverse authorization (ID: %s)',
+                        'woocommerce-gateway-simplify-commerce' ),
+                        $authCode ) );
 
             if ( wp_get_referer() || 'yes' !== WC_Gateway_Simplify_Commerce_Loader::is_hpos() ) {
                 wp_safe_redirect( wp_get_referer() );
@@ -483,7 +547,23 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      * Initialise Gateway Settings Form Fields.
      */
     public function init_form_fields() {
+        $download_url = add_query_arg(
+            array(
+                'action' => 'download_log',
+                '_wpnonce' => wp_create_nonce( 'mpgs_download_log' )
+        ), admin_url( 'admin-ajax.php' ) );
+
         $this->form_fields = array(
+            'heading'            => array(
+                'title'       => null,
+                'type'        => 'title',
+                'description' => sprintf(
+                    /* translators: 1. MPGS Simplify module vesion, 2. MPGS Simplify SDK version. */
+                    __( 'Plugin version: %1$s<br />SDK version: %2$s', 'woocommerce-gateway-simplify-commerce' ),
+                    MPGS_SIMPLIFY_MODULE_VERSION,
+                    MPGS_SIMPLIFY_SDK_VERSION
+                ),
+            ),
             'enabled'             => array(
                 'title'       => __( 'Enable/Disable', 'woocommerce-gateway-simplify-commerce' ),
                 'label'       => __(
@@ -565,6 +645,18 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                     'woocommerce-gateway-simplify-commerce'
                 ),
             ),
+            'debug'              => array(
+                'title'       => __( 'Debug Logging', 'woocommerce-gateway-simplify-commerce' ),
+                'label'       => __( 'Enable Debug Logging', 'woocommerce-gateway-simplify-commerce' ),
+                'type'        => 'checkbox',
+                'description' => sprintf(
+                    /* translators: Gateway API Credentials */
+                    __( 'All communications with the Simplify Mastercard Gateway are encrypted and logged in the ./wp-content/mastercard_simplify.log. The decrypted log file can be <a href="%s">downloaded</a> here.', 'woocommerce-gateway-simplify-commerce' ),
+                    $download_url
+                ),
+                'default'     => 'no',
+                
+            ),
             'sandbox'             => array(
                 'title'       => __( 'Sandbox', 'woocommerce-gateway-simplify-commerce' ),
                 'label'       => __( 'Enable Sandbox Mode', 'woocommerce-gateway-simplify-commerce' ),
@@ -615,6 +707,41 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 'default'     => '',
                 'desc_tip'    => true
             ),
+            'handling_fee'      => array(
+                'title'       => __( 'Handling Fee', 'mastercard' ),
+                'type'        => 'title',
+                'description' => __( 'The handling amount for the order, including taxes on the handling.', 'mastercard' ),
+            ),
+            'hf_enabled'            => array(
+                'title'       => __( 'Enable/Disable', 'mastercard' ),
+                'label'       => __( 'Enable', 'mastercard' ),
+                'type'        => 'checkbox',
+                'description' => '',
+                'default'     => 'no',
+            ),
+            'handling_text'      => array(
+                'title'       => __( 'Handling Fee Text', 'mastercard' ),
+                'type'        => 'text',
+                'description' => __( 'Display text for handling fee.', 'mastercard' ),
+                'default'     => '',
+                'css'         => 'min-height: 33px;'
+            ),
+            'hf_amount_type'     => array(
+                'title'   => __( 'Applicable Amount Type', 'mastercard' ),
+                'type'    => 'select',
+                'options' => array(
+                    self::HF_FIXED      => __( 'Fixed', 'mastercard' ),
+                    self::HF_PERCENTAGE => __( 'Percentage', 'mastercard' ),
+                ),
+                'default' => self::HF_FIXED,
+            ),
+            'handling_fee_amount' => array(
+                'title'       => __( 'Amount', 'mastercard' ),
+                'type'        => 'text',
+                'description' => __( 'The total amount for handling fee; Eg: 10.00 or 10%.', 'mastercard' ),
+                'default'     => '',
+                'css'         => 'min-height: 33px;'
+            )
         );
     }
 
@@ -764,7 +891,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
         }
 
         try {
-
             // Create customer
             $customer = Simplify_Customer::createCustomer( array(
                 'email'     => $order->get_billing_email(),
@@ -790,7 +916,9 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
             }
 
             $data    = array_merge( $data, $token ); 
+            $this->log( 'Payment Request', json_encode( $data ) );
             $payment = Simplify_Payment::createPayment( $data );
+            $this->log( 'Payment Response', $payment );
 
         } catch ( Exception $e ) {
             $error_message = $e->getMessage();
@@ -881,7 +1009,6 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      */
     public function process_payment( $order_id ) {
         $order = wc_get_order( $order_id );
-
         return $this->process_hosted_payments( $order );
     }
 
@@ -958,6 +1085,29 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
      */
     protected function get_total( $order ) {
         return $this->get_total_amount( $order->get_total() );
+    }
+
+    /**
+     * This function processes the admin options.
+     *
+     * @return array $saved Admin Options.
+     */
+    public function process_admin_options() {
+        $saved = parent::process_admin_options();
+        if( 'simplify_commerce' === $this->id ) {
+            static $error_added = false;
+            if( isset( $this->settings['hf_amount_type'] ) && 'percentage' === $this->settings['hf_amount_type'] ) {
+                if ( absint( $this->settings['handling_fee_amount'] ) > 100 ) {
+                    if ( ! $error_added ) {
+                        WC_Admin_Settings::add_error( __( 'The maximum allowable percentage is 100.', 'woocommerce-gateway-simplify-commerce' ) );
+                        $error_added = true;
+                    }
+                    $this->update_option( 'handling_fee_amount', 100 );
+                }
+            }
+        }
+
+        return $saved;
     }
 
     /**
@@ -1150,6 +1300,7 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
             ) );
 
             $order_builder = new Mastercard_Simplify_CheckoutBuilder( $order );
+
             $data          = array(
                 'amount'      => $amount,
                 'token'       => $card_token,
@@ -1161,12 +1312,13 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 ),
                 'order'       => $order_builder->getOrder(),
             );
-
+            $this->log( 'Authorize Request', json_encode( $data ) );
             if ( is_object( $customer ) && '' != $customer->id ) {
                 $data['customer'] = wc_clean( $customer->id );
             }
 
             $authorization = Simplify_Authorization::createAuthorization( $data );
+            $this->log( 'Authorize Response', $authorization );
 
             return $this->process_authorization_order_status(
                 $order,
@@ -1286,8 +1438,9 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
                 'reason'    => $reason ?: $defaultRefundReason,
                 'reference' => $order_id,
             );
-
+            $this->log( 'Refund Request', json_encode( $refund_data ) );
             $refund = Simplify_Refund::createRefund( $refund_data );
+            $this->log( 'Refund Response', $refund );
 
             if ( 'APPROVED' === $refund->paymentStatus ) {
                 $order->add_order_note(
@@ -1317,5 +1470,62 @@ class WC_Gateway_Simplify_Commerce extends WC_Payment_Gateway_CC {
         }
 
         return false;
+    }
+
+    /**
+     * Logs a message with a specific text.
+     *
+     * @param string $text   The text to include in the log.
+     * @param mixed  $message The message or data to be logged.
+     */
+    public function log( $text, $message ) {
+        if( $this->logging_level ) { 
+            $logger  = new Mastercard_Simplify_Api_Logger( $this->hash );
+            $message = date( 'Y-m-d g:i a' ) . ' : ' . $text . ' :- ' . $message;
+            $logger->write_encrypted_log( $message );
+        }
+    }
+
+    /**
+     * Handles the download of the decrypted log file.
+     *
+     * This function initiates the process to allow users to download
+     * a decrypted log file. It ensures proper file access and
+     * sets appropriate headers for file download.
+     */
+    public function download_decrypted_log() {
+        if ( isset( $_REQUEST['_wpnonce'] ) && wp_verify_nonce( $_REQUEST['_wpnonce'], 'mpgs_download_log' ) ) {
+            $logger = new Mastercard_Simplify_Api_Logger( $this->hash );
+            $logger->read_decrypted_log();
+            wp_die();
+        } else {
+            wp_safe_redirect( admin_url( 'page=wc-settings&tab=checkout&section=simplify_commerce' ) );
+            wp_die();
+        }
+    }
+
+    /**
+     * Adds a handling fee to the WooCommerce cart calculation.
+     * 
+     * This ensures that the handling fee is added during the cart calculation process.
+     */
+    public function add_handling_fee() {
+        if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+            return;
+        }
+        
+        if ( isset( $this->hf_enabled ) && 'yes' === $this->hf_enabled ){
+            $handling_text = $this->get_option( 'handling_text' );
+            $amount_type   = $this->get_option( 'hf_amount_type' );
+            $handling_fee  = $this->get_option( 'handling_fee_amount' ) ? $this->get_option( 'handling_fee_amount' ) : 0;
+
+            if ( self::HF_PERCENTAGE === $amount_type ) {
+                $surcharge = (float)( WC()->cart->cart_contents_total ) * ( (float) $handling_fee / 100 );
+            } else {
+                $surcharge = $handling_fee;
+            }
+
+            WC()->cart->add_fee( $handling_text, $surcharge, true, '' );
+        }
     }
 }

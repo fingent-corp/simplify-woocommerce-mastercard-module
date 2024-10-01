@@ -23,23 +23,23 @@
 
 $url_query       = parse_url( $redirect_url, PHP_URL_QUERY );
 $url_query_parts = $url_query ? explode( '&', $url_query ) : [];
-
 ?>
-
 <script type="text/javascript" src="https://<?php echo $clean_gateway_url;?>/commerce/simplify.pay.js"></script>
-<iframe name="embedded_pay"
-        class="simplify-embedded-payment-form" <?php echo implode( ' ', $iframe_args ) ?>></iframe>
-
-<form id="embedded-form" style="display: none" action="<?php echo $redirect_url ?>" method="get">
-	<?php foreach ( $url_query_parts as $query_part ): ?>
-		<?php
-		$query = explode( '=', $query_part );
-		if ( ! isset( $query[0], $query[1] ) ) {
-			continue;
+<iframe name="embedded_pay" class="simplify-embedded-payment-form" <?php echo implode( ' ', $iframe_args ) ?>></iframe>
+<form id="embedded-form" style="display: none" action="<?php echo esc_url( $redirect_url ); ?>" method="get">
+	<?php
+	if( $url_query_parts ) {
+		foreach ( $url_query_parts as $query_part ) { ?>
+			<?php
+			$query = explode( '=', $query_part );
+			if ( ! isset( $query[0], $query[1] ) ) {
+				continue;
+			}
+			?>
+			<input type="text" name="<?php echo esc_attr( $query[0] ); ?>" value="<?php echo esc_attr( $query[1] ); ?>">
+		<?php 
 		}
-		?>
-		<input type="text" name="<?php echo esc_attr($query[0]) ?>" value="<?php echo esc_attr($query[1]) ?>">
-	<?php endforeach; ?>
+	} ?>
 	<input type="text" name="reference" value="">
 	<input type="text" name="amount" value="">
 	<?php if ( $is_purchase ): ?>
@@ -52,29 +52,27 @@ $url_query_parts = $url_query ? explode( '&', $url_query ) : [];
 		<input type="text" name="cardToken" value="">
 	<?php endif; ?>
 </form>
-
 <script>
 	var redirectUrl = "<?php echo $redirect_url ?>",
 		isPurchase = <?php echo $is_purchase ? 'true' : 'false' ?>,
 		publicKey = "<?php echo $public_key ?>";
-	$embeddedForm = jQuery('#embedded-form');
-
+	$embeddedForm = jQuery( '#embedded-form' );
 	SimplifyCommerce.hostedPayments(
-		function (data) { console.log(data);
-			if (data.close && data.close === true) {
+		function ( data ) { 
+			if ( data.close && data.close === true ) {
 				return;
 			}
-			$embeddedForm.find("[name=reference]").val(data.reference);
-			$embeddedForm.find("[name=amount]").val(data.amount);
+			$embeddedForm.find( "[name=reference]" ).val( data.reference );
+			$embeddedForm.find( "[name=amount]" ).val( data.amount );
 
-			if (isPurchase) {
-				$embeddedForm.find("[name=paymentId]").val(data.paymentId);
-				$embeddedForm.find("[name=signature]").val(data.signature);
-				$embeddedForm.find("[name=paymentDate]").val(data.paymentDate);
-				$embeddedForm.find("[name=paymentStatus]").val(data.paymentStatus);
-				$embeddedForm.find("[name=authCode]").val(data.authCode);
+			if ( isPurchase ) {
+				$embeddedForm.find( "[name=paymentId]" ).val( data.paymentId );
+				$embeddedForm.find( "[name=signature]" ).val( data.signature );
+				$embeddedForm.find( "[name=paymentDate]" ).val( data.paymentDate );
+				$embeddedForm.find( "[name=paymentStatus]" ).val( data.paymentStatus );
+				$embeddedForm.find( "[name=authCode]" ).val( data.authCode );
 			} else {
-				$embeddedForm.find("[name=cardToken]").val(data.cardToken);
+				$embeddedForm.find( "[name=cardToken]" ).val( data.cardToken );
 			}
 			$embeddedForm.submit();
 		},
@@ -83,7 +81,6 @@ $url_query_parts = $url_query ? explode( '&', $url_query ) : [];
 		}
 	);
 </script>
-
 <div>
 	<a class="button cancel" href="<?php echo esc_url( $order->get_cancel_order_url() ) ?>">
 		<?php echo __( 'Cancel order &amp; restore cart', 'woocommerce-gateway-simplify-commerce' ) ?>

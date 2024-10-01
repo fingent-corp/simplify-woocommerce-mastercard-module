@@ -1,5 +1,12 @@
 == Simplify - Mastercard Payment Gateway Services Changelog ==
 
+2024-10-01 - version 2.4.3
+
+* Add - Implemented a feature to enable or disable debug logging. All communication data is encrypted and stored in a log file.
+* Add - Implemented the ability to process void transactions.
+* Add - Implemented the ability to add mandatory or optional extra fees on the checkout page.
+* Fix - Fixed the compatibility issue with the WooCommerce Subscription plugin.
+
 2024-05-06 - version 2.4.2
 
 * Add - Implemented a notification feature to alert the WordPress administrator whenever a new version is launched on GitHub.
