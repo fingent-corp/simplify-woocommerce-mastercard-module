@@ -6,15 +6,14 @@
  * Author: Fingent Global Solutions Pvt. Ltd.
  * Author URI: https://www.fingent.com/
  * Text Domain: woocommerce-gateway-simplify-commerce
- * Version: 2.4.2
- *
- * Requires at least: 6.0
- * Tested up to: 6.4.3
+ * Version: 2.4.3
+ * Requires at least: 5.6.0
+ * Tested up to: 6.6.1
  * Requires PHP: 7.4
  * php version 8.1
  *
  * WC requires at least: 7.6
- * WC tested up to: 8.5.2
+ * WC tested up to: 9.1.4
  * 
  * Copyright (c) 2019-2026 Mastercard
  *
@@ -117,6 +116,7 @@ if ( ! class_exists( 'WC_Gateway_Simplify_Commerce_Loader' ) ) {
 
 			require_once plugin_basename( '/includes/class-simplify-checkout-builder.php' );	
 			require_once plugin_basename( '/includes/class-gateway-notification.php' );	
+			require_once plugin_basename( '/includes/class-simplify-api-logger.php' );
 
 			// Don't hook anything else in the plugin if we're in an incompatible environment
 			if ( self::get_environment_warning() ) {
@@ -142,7 +142,7 @@ if ( ! class_exists( 'WC_Gateway_Simplify_Commerce_Loader' ) ) {
 						'woocommerce-gateway-simplify-commerce'
 					);
 					$actions[ WC_Gateway_Simplify_Commerce::ID . '_void_payment' ]    = __(
-						'Reverse Authorization',
+						'Void',
 						'woocommerce-gateway-simplify-commerce'
 					);
 				}
