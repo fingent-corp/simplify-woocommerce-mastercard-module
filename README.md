@@ -1,3 +1,10 @@
+## ⚠️ This repository is no longer actively maintained
+![No Maintenance Intended](http://unmaintained.tech/badge.svg)
+
+# Notice
+
+## Please note that this repository will be discontinued as of July 01, 2025, and no further support will be provided thereafter.
+
 # Simplify Commerce Payment Gateway for WooCommerce
 
 The Simplify Commerce payment gateway plugin for WooCommerce 7.3+ lets you to take card payments directly on your WooCommerce store.
